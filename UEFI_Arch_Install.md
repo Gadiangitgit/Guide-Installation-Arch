@@ -1,30 +1,4 @@
-# Guide d'installation de Arch-Linux (Minimal)
-
-## Sommaire
-- [Pré-requis pour le bon déroulement de l'installation](#pré-requis-pour-le-bon-déroulement-de-linstallation)
-- [Pour tester la connectivité (IP & DNS)](#pour-tester-la-connectivité-ip--dns)
-- [Début de l'installation](#début-de-linstallation)
-- [Mettre en place le partitionnement du disques dur en UEFI](#mettre-en-place-le-partitionnement-du-disques-dur-en-uefi)
-- [Mettre en place le partitionnement du disques dur en BIOS](#mettre-en-place-le-partitionnement-du-disques-dur-en-bios)
-- [Lister les partitions créer afin de les formater correctement](#lister-les-partitions-créer-afin-de-les-formater-correctement)
-- [Formater les partitions sous le bon format (UEFI)](#formater-les-partitions-sous-le-bon-format-uefi)
-- [Formater les partitions sous le bon format (BIOS)](#formater-les-partitions-sous-le-bon-format-bios)
-- [Monter les lecteurs afin de commencer l'installation (UEFI)](#monter-les-lecteurs-afin-de-commencer-linstallation-uefi)
-- [Monter les lecteurs afin de commencer l'installation (BIOS)](#monter-les-lecteurs-afin-de-commencer-linstallation-bios)
-- [Vérification que l'intégrité des paquets lors de l'installations](#vérification-que-lintégrité-des-paquets-lors-de-linstallations)
-- [Modification sur le fichier de configuration de Pacman](#modification-sur-le-fichier-de-configuration-de-pacman)
-- [Installation du système de base](#installation-du-système-de-base)
-- [Initialisation des partitions au démarrage](#initialisation-des-partitions-au-démarrage)
-- [Configuration Post-Installation](#configuration-post-installation)
-- [Configuration de la timezone](#configuration-de-la-timezone)
-- [Configuration du clavier](#configuration-du-clavier)
-- [Configuration de la langue système](#configuration-de-la-langue-système)
-- [Configuration du nom d'hôte](#configuration-du-nom-dhôte)
-- [Création d'un utilisateur et définition du mot de passe user & root](#création-dun-utilisateur-et-définition-du-mot-de-passe-user--root)
-- [Initialisation du bootloader (GRUB)](#initialisation-du-bootloader-grub)
-- [Pour terminer !](#pour-terminer-)
-
-
+# Guide d'installation de Arch-Linux UEFI (Minimal)
 
 
 ## Pré-requis pour le bon déroulement de l'installation
@@ -34,6 +8,11 @@ ___
 ```shell
 loadkeys fr
 ```
+Pour agrandir la police en fonction de la taille de l'écran
+```shell
+setfont -d
+```
+
 **Pour savoir si une adresse IP a été récupérer et voir le nom des cartes réseaux**
 ___
 
@@ -66,13 +45,24 @@ ping www.google.com
 > J'ai fait la configuration en NAT je n'ai pas réussi à récupérer une IP sinon
 
 ## Début de l'installation
-Avant de commencer voici un petit brief ce qu'est la swap car notre première étape consiste à mettre en place le partitionnement des diques.
+A partir de maintenant, il va falloir vous poser 3 questions :  
+Est ce que je dois mettre de la SWAP ?  
+Est ce que mon disque doit être chiffré ?  
+Est ce que je dois séparer /home ou non ?  
+
+Avant de commencer voici un petit brief sur ces 3 options.
+
 La SWAP permet de déplacer des données de la RAM vers le disque pour éviter une surconsommation de la RAM en cas de pic, utile aussi en cas de machine qui peuvent être mis en hibernation.  
 ATTENTION : La swap est assez pratique sur cet aspect mais garder en tête que si un virus ou une quelquonque attaque touche votre systeme et charge quelque chose en mémoire cela pourra être garder dans la swap (sur votre disque) je vais surment trop loin mais garder cela en tête.
 
+Le chiffrement disque intervient comme une mesure de protection de vos données, elle sert souvent en cas de vol, c'est une mesure qui est fortement recommandé sur un laptop.  
+ATTENTION : C'est une bonne mesure de sécurité mais si vous ordinateur, cela n'est peut être pas pertinant, parter du principe que cela rajoute un mot de passe à taper à chaque fois et ralenti le démarrage du PC car déchiffrement obligatoire au début de celui-ci
+
+La partition /home est assez importante, il s'agit de celle qui va contenir toutes nos données l'avantages vu qu'elle est modulaire il possible de garder en cas de problème avec l'OS mais elle permet de bien distinguée la partie systèmes et fichier personnel, de plus la configuration si dessous sera fait avec LVM qui permet de réallouer de la taille de disque en cas d'un /root trop gourmand.
+
 ### Lister les partitions créer afin de les formater correctement
 ___
-Afin de continuer il faut correctement identifier les partition de notre disque dur repérer en fonction de la taille 
+Afin de continuer il faut correctement identifier les partitions de notre disque dur repérer en fonction de la taille 
 ```shell
 lsblk
 ```  
@@ -86,9 +76,7 @@ sda1 est la partition EFI
 sda2 est la partition EXT4 (Linux Filesystem)
 (La swap sera créer plus tard et chiffré)
 
-Dans notre cas BIOS :  
-sda1 est la partition swap  
-sda2 est la partition EXT4 (Linux Filesystem)  
+
 
 ### Mettre en place le partitionnement du disques dur en UEFI
 Il est très important de préciser le disque par défaut pour être sur de ne pas ce tromper de périphérique d'installation  
@@ -96,42 +84,29 @@ Il est très important de préciser le disque par défaut pour être sur de ne p
 - /nvme0n? = disque NVME
 - /mmcblk? = carte SD (qui fait ça sérieux ?)
 ___
+Dans notre cas ça sera /dev/sda n'hésiter pas à adapter en fonction de votre disque
 ```shell
 cfdisk /dev/sda 
 ```  
 
 Sélectionner GPT (C'est marrant hein ?)
 
-
+ En cas de disque non chiffré sans /home séparer 
 | Type de Partition | Taille de Partition | Type de Formatage |
 | :--------------------- | :--------------- | :---------------|
 | EFI System| 512 MB ou 1G (en cas de dual-boot ou multi kernel) | FAT32
 | Linux swap | En fonction de la RAM (Si 4G de RAM mettre 4G de SWAP ect..) | Linux SWAP
 |Linux Filesystem | Tout le reste du disque| EXT4 
 
+En cas de disque non chiffré et /home séparer 
+| Type de Partition | Taille de Partition | Type de Formatage |
+| :--------------------- | :--------------- | :---------------|
+| EFI System| 512 MB ou 1G (en cas de dual-boot ou multi kernel) | FAT32
+| Linux swap | En fonction de la RAM (Si 4G de RAM mettre 4G de SWAP ect..) | Linux SWAP
+|Linux Filesystem | +-30G | EXT4 
+|Linux Filesystem | Tout le reste du disque| EXT4 
 
-**SPAMMER PAS ENTREE PAR IMPATIENCE CELA VOUS FERRAIS QUITTER LE MENU DE CFDISK ET TOUT RECOMMENCER**  
-- Sélectionner le disque vide avec Entrée
-- Saisir la taille de la partition souhaité ( Format : NombreUnité ex: 512MB) puis Entrée
-- Naviguer avec les flèches pour changer le type de partition via Type
-- Sélectionner la bonne partition (EFI System, Linux Filesystem, Linux swap)
-- Répéter le processus pour chaque partition
-- Sélectionner Write pour Sauvegarder puis écrire yes
-- Quit pour Quitter
-
-### Mettre en place le partitionnement du disques dur en UEFI Chiffré
-Il est très important de préciser le disque par défaut pour être sur de ne pas ce tromper de périphérique d'installation  
-- /sda = disque HDD & SSD
-- /nvme0n? = disque NVME
-- /mmcblk? = carte SD (qui fait ça sérieux ?)
-___
-```shell
-cfdisk /dev/sda 
-```  
-
-Sélectionner GPT (C'est marrant hein ?)
-
-
+ En cas de disque chiffré et /home séparer ou non 
 | Type de Partition | Taille de Partition | Type de Formatage |
 | :--------------------- | :--------------- | :---------------|
 | EFI System| 512 MB ou 1G (en cas de dual-boot ou multi kernel) | FAT32
@@ -147,11 +122,12 @@ Sélectionner GPT (C'est marrant hein ?)
 - Sélectionner Write pour Sauvegarder puis écrire yes
 - Quit pour Quitter
 
+
 ### Configuration supplémentaire pour le volume Chiffré
 ___
-La manière de procéder est totalement différent 
+La manière de procéder est totalement différente
 ```shell
-#Pour formater notre partition/dev/sda2 avec LUKS2 
+#Pour formater notre partition/dev/sda2  avec LUKS2 
 cryptsetup luksFormat --type luks2 --pbkdf pbkdf2 /dev/sda2
 ```
 --pbkdf pbkdf2 obligatoire pour la compatibilté avec GRUB
@@ -170,32 +146,14 @@ pvcreate /dev/mapper/cryptlvm
 # Créer le groupe de volume
 vgcreate vg0 /dev/mapper/cryptlvm
 ```
-Une fois terminée nous allons créer nos 2 volume qui vont acceulir notre swap et nos données en EXT4
+Une fois terminée nous allons créer nos chiffré en focntion du besoin (ne faites pas la commande pour le swap ou le home si vous n'en voulez pas)
 ```shell
 # ?G à adapter selon la RAM, la deuxième commande va prendre toutce qui reste, la dernière permet de vérifier que les paramètres ont bien été appliquée 
 lvcreate -L ?G vg0 -n swap  
-lvcreate -l 100%FREE vg0 -n root
+lvcreate -L 30G vg0 -n root    
+lvcreate -l 100%FREE vg0 -n home 
 lvs
 ```
-
-### Mettre en place le partitionnement du disques dur en BIOS
-___
-A première vu l'architecture BIOS n'a pas besoin d'une partition spécifique, cela fait donc une de moins à créer 
-
-| Type de Partition | Taille de Partition | Type de Formatage |
-| :--------------------- | :--------------- | :---------------|
-| Linux swap | En fonction de la RAM (Si 4G de RAM mettre 4G de SWAP ect..) | Linux SWAP
-|Linux Filesystem | Tout le reste du disque| EXT4 
-
-**SPAMMER PAS ENTREE PAR IMPATIENCE CELA VOUS FERRAIS QUITTER LE MENU DE CFDISK ET TOUT RECOMMENCER**  
-- Sélectionner le disque vide avec Entrée
-- Saisir la taille de la partition souhaité ( Format : NombreUnité ex: 512MB) puis Entrée
-- Naviguer avec les flèches pour changer le type de partition via Type
-- Sélectionner la bonne partition (EFI System, Linux Filesystem, Linux swap)
-- Répéter le processus pour chaque partition
-- Sélectionner Write pour Sauvegarder puis écrire yes
-- Quit pour Quitter
-
 
 ### Formater les partitions sous le bon format (UEFI)
 ___
@@ -211,30 +169,28 @@ mkswap /dev/sda2
 # Pour formater le /dev/sda1 en FAT32
 mkfs.fat -F 32 /dev/sda1
 ```
+Si /home séparer 
+```shell
+mkfs.ext4 /dev/sda4
+```
 ### Formater les partitions sous le bon format (UEFI Chiffré)
 ___
 ```shell
-#Pour formater notre partition/dev/sda3 en EXT4 
+#Pour formater notre partition root en EXT4 
 mkfs.ext4 /dev/vg0/root
 ```
 ```shell
-# Pour formater notre /dev/sda2 en swap
+# Pour formater la partition swap en swap
 mkswap /dev/vg0/swap
 ```
 ```shell
 # Pour formater le /dev/sda1 en FAT32
 mkfs.fat -F 32 /dev/sda1
 ```
-
-### Formater les partitions sous le bon format (BIOS)
-___
+En cas de /home séparée 
 ```shell
-#Pour formater notre partition/dev/sda3 en EXT4 
-mkfs.ext4 /dev/sda2
-```
-```shell
-# Pour formater notre /dev/sda2 en swap
-mkswap /dev/sda1
+#Pour formater notre partition home en EXT4 
+mkfs.ext4 /dev/vg0/home
 ```
 
 ### Monter les lecteurs afin de commencer l'installation (UEFI) 
@@ -252,6 +208,10 @@ mount --mkdir /dev/sda1 /mnt/boot
 ```shell
 # Pour activer le swap
 swapon /dev/sda2
+```
+```shell 
+# Pour monter la partition /home
+mount --mkdir /dev/sda4 /mnt/home
 ```
 Notes : Dans certains tuto pour la partition EFI, il créer le dossier /mnt/boot appart j'ai décidé de le mettre dans une seule et unique commande par facilité
 
@@ -271,6 +231,10 @@ mount --mkdir /dev/sda1 /mnt/boot
 # Pour activer le swap
 swapon /dev/vg0/swap
 ```
+```shell 
+# Pour monter la partition EFI
+mount --mkdir /dev/vg0/home /mnt/home
+
 ```shell
 # Pour vérifier que tout est en place les 2 partitions doivent apparaitre
 lvs 
@@ -278,18 +242,6 @@ pvs
 ```
 Notes : Dans certains tuto pour la partition EFI, il créer le dossier /mnt/boot appart j'ai décidé de le mettre dans une seule et unique commande par facilité 
 
-### Monter les lecteurs afin de commencer l'installation (BIOS) 
-___
-Pour monter les lecteur nous allons utliser la commande `mount`
-
-```shell
-# Pour monter la partition EXT4
-mount /dev/sda2 /mnt
-```
-```shell
-# Pour activer le swap
-swapon /dev/sda1
-```
 ### Vérification que l'intégrité des paquets lors de l'installations 
 ___
 Il faut désormais installer tout les paquets qui permet de faire fonctionner correctement l'OS mais avant nous allons vérifié que nous avons les bonnes paire de clé pour pouvoir installer les paquets correctement avec le gestionnaire de paquet `pacman`
@@ -315,7 +267,8 @@ Afin d'initialiser le système d'exploitation une bonne fois pour toute lancer l
 ```shell
 pacstrap -K /mnt base linux linux-firmware base-devel networkmanager git curl man fastfetch grub efibootmgr nano sudo
 ``` 
-**Si on chiffre le système les paquets `lvm2 cryptsetup tpm2-tools tpm2-tss` sont à rajouter**
+**Si on chiffre le système les paquets `lvm2 cryptsetup` sont à rajouter**
+**Si on chiffre le système avec le TPM les paquets `tpm2-tools tpm2-tss` sont à rajouter en plus de `lvm2 cryptsetup`**
 
 **Optionnel mais peut être bien `intel-ucode` ou `amd-ucode` en fonction du processeur afin d'éviter de potentiel bug à ce niveau** 
 
@@ -419,10 +372,7 @@ Si jamais vous voulez juste un disque chiffré c'était la dernière étape Brav
 Pour l'implémentation de la TPM2 on continue !
 
 ## Initialisation du bootloader (GRUB)
-Dans le cas d'une installation BIOS :
-```shell
-grub-install --target=i386-pc /dev/sda
-```
+
 Dans le cas d'une installation UEFI :
 ```shell
 grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB 
