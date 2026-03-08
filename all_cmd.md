@@ -1,4 +1,4 @@
-```shell
+```bash
 loadkeys fr
 ip a
 ping archlinux.org 

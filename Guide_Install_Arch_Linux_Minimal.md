@@ -70,11 +70,38 @@ Avant de commencer voici un petit brief ce qu'est la swap car notre première é
 La SWAP permet de déplacer des données de la RAM vers le disque pour éviter une surconsommation de la RAM en cas de pic, utile aussi en cas de machine qui peuvent être mis en hibernation.  
 ATTENTION : La swap est assez pratique sur cet aspect mais garder en tête que si un virus ou une quelquonque attaque touche votre systeme et charge quelque chose en mémoire cela pourra être garder dans la swap (sur votre disque) je vais surment trop loin mais garder cela en tête.
 
+### Lister les partitions créer afin de les formater correctement
+___
+Afin de continuer il faut correctement identifier les partition de notre disque dur repérer en fonction de la taille 
+```shell
+lsblk
+```  
+Dans notre cas UEFI : 
+sda1 est la partition EFI  
+sda2 est la partition de swap   
+sda3 est la partition de EXT4 (Linux Filesystem) 
+
+Dans notre cas UEFI Chiffré :
+sda1 est la partition EFI
+sda2 est la partition EXT4 (Linux Filesystem)
+(La swap sera créer plus tard et chiffré)
+
+Dans notre cas BIOS :  
+sda1 est la partition swap  
+sda2 est la partition EXT4 (Linux Filesystem)  
+
 ### Mettre en place le partitionnement du disques dur en UEFI
+Il est très important de préciser le disque par défaut pour être sur de ne pas ce tromper de périphérique d'installation  
+- /sda = disque HDD & SSD
+- /nvme0n? = disque NVME
+- /mmcblk? = carte SD (qui fait ça sérieux ?)
 ___
 ```shell
-cfdisk
+cfdisk /dev/sda 
 ```  
+
+Sélectionner GPT (C'est marrant hein ?)
+
 
 | Type de Partition | Taille de Partition | Type de Formatage |
 | :--------------------- | :--------------- | :---------------|
@@ -91,6 +118,65 @@ cfdisk
 - Répéter le processus pour chaque partition
 - Sélectionner Write pour Sauvegarder puis écrire yes
 - Quit pour Quitter
+
+### Mettre en place le partitionnement du disques dur en UEFI Chiffré
+Il est très important de préciser le disque par défaut pour être sur de ne pas ce tromper de périphérique d'installation  
+- /sda = disque HDD & SSD
+- /nvme0n? = disque NVME
+- /mmcblk? = carte SD (qui fait ça sérieux ?)
+___
+```shell
+cfdisk /dev/sda 
+```  
+
+Sélectionner GPT (C'est marrant hein ?)
+
+
+| Type de Partition | Taille de Partition | Type de Formatage |
+| :--------------------- | :--------------- | :---------------|
+| EFI System| 512 MB ou 1G (en cas de dual-boot ou multi kernel) | FAT32
+|Linux Filesystem | Tout le reste du disque| EXT4 
+
+
+**SPAMMER PAS ENTREE PAR IMPATIENCE CELA VOUS FERRAIS QUITTER LE MENU DE CFDISK ET TOUT RECOMMENCER**  
+- Sélectionner le disque vide avec Entrée
+- Saisir la taille de la partition souhaité ( Format : NombreUnité ex: 512MB) puis Entrée
+- Naviguer avec les flèches pour changer le type de partition via Type
+- Sélectionner la bonne partition (EFI System, Linux Filesystem, Linux swap)
+- Répéter le processus pour chaque partition
+- Sélectionner Write pour Sauvegarder puis écrire yes
+- Quit pour Quitter
+
+### Configuration supplémentaire pour le volume Chiffré
+___
+La manière de procéder est totalement différent 
+```shell
+#Pour formater notre partition/dev/sda2 avec LUKS2 
+cryptsetup luksFormat --type luks2 --pbkdf pbkdf2 /dev/sda2
+```
+--pbkdf pbkdf2 obligatoire pour la compatibilté avec GRUB
+Ecrire `YES`
+Rentrer le mot de passe qui va être demander lors de chaque connexion
+
+```shell
+# Rentrer dans le volume chiffré
+cryptsetup luksOpen /dev/sda2 cryptlvm
+```
+```shell
+# Créer le volume LVM
+pvcreate /dev/mapper/cryptlvm
+```
+```shell
+# Créer le groupe de volume
+vgcreate vg0 /dev/mapper/cryptlvm
+```
+Une fois terminée nous allons créer nos 2 volume qui vont acceulir notre swap et nos données en EXT4
+```shell
+# ?G à adapter selon la RAM, la deuxième commande va prendre toutce qui reste, la dernière permet de vérifier que les paramètres ont bien été appliquée 
+lvcreate -L ?G vg0 -n swap  
+lvcreate -l 100%FREE vg0 -n root
+lvs
+```
 
 ### Mettre en place le partitionnement du disques dur en BIOS
 ___
@@ -110,20 +196,6 @@ A première vu l'architecture BIOS n'a pas besoin d'une partition spécifique, c
 - Sélectionner Write pour Sauvegarder puis écrire yes
 - Quit pour Quitter
 
-### Lister les partitions créer afin de les formater correctement
-___
-Afin de continuer il faut correctement identifier les partition de notre disque dur repérer en fonction de la taille 
-```shell
-lsblk
-```  
-Dans notre cas UEFI : 
-sda1 est la partition EFI  
-sda2 est la partition de swap   
-sda3 est la partition de EXT4 (Linux Filesystem) 
-
-Dans notre cas BIOS :  
-sda1 est la partition swap  
-sda2 est la partition EXT4 (Linux Filesystem)  
 
 ### Formater les partitions sous le bon format (UEFI)
 ___
@@ -134,6 +206,20 @@ mkfs.ext4 /dev/sda3
 ```shell
 # Pour formater notre /dev/sda2 en swap
 mkswap /dev/sda2
+```
+```shell
+# Pour formater le /dev/sda1 en FAT32
+mkfs.fat -F 32 /dev/sda1
+```
+### Formater les partitions sous le bon format (UEFI Chiffré)
+___
+```shell
+#Pour formater notre partition/dev/sda3 en EXT4 
+mkfs.ext4 /dev/vg0/root
+```
+```shell
+# Pour formater notre /dev/sda2 en swap
+mkswap /dev/vg0/swap
 ```
 ```shell
 # Pour formater le /dev/sda1 en FAT32
@@ -166,6 +252,29 @@ mount --mkdir /dev/sda1 /mnt/boot
 ```shell
 # Pour activer le swap
 swapon /dev/sda2
+```
+Notes : Dans certains tuto pour la partition EFI, il créer le dossier /mnt/boot appart j'ai décidé de le mettre dans une seule et unique commande par facilité
+
+### Monter les lecteurs afin de commencer l'installation (UEFI Chiffré) 
+___
+Pour monter les lecteur nous allons utliser la commande `mount`
+
+```shell
+# Pour monter la partition EXT4
+mount /dev/vg0/root /mnt
+```
+```shell 
+# Pour monter la partition EFI
+mount --mkdir /dev/sda1 /mnt/boot
+```
+```shell
+# Pour activer le swap
+swapon /dev/vg0/swap
+```
+```shell
+# Pour vérifier que tout est en place les 2 partitions doivent apparaitre
+lvs 
+pvs
 ```
 Notes : Dans certains tuto pour la partition EFI, il créer le dossier /mnt/boot appart j'ai décidé de le mettre dans une seule et unique commande par facilité 
 
@@ -204,11 +313,13 @@ Puis sauvegarder et quitter
 ___
 Afin d'initialiser le système d'exploitation une bonne fois pour toute lancer la commande, elle permet de lacner le minimun requis pour avoir un arch fonctionnel : 
 ```shell
-pacstrap -K /mnt base linux linux-firmware networkmanager git curl man fastfetch grub efibootmgr nano sudo
+pacstrap -K /mnt base linux linux-firmware base-devel networkmanager git curl man fastfetch grub efibootmgr nano sudo
 ``` 
-**Optionnel mais peut être bien `intel-ucode` ou `amd-ucode` en fonction du processeur afin d'éviter de potentiel bug à ce niveau**  
+**Si on chiffre le système les paquets `lvm2 cryptsetup tpm2-tools tpm2-tss` sont à rajouter**
 
-En cas d'erreur à cause d'un réseau trop lent, relancer la commande seul les paquet non installé s'installeront 
+**Optionnel mais peut être bien `intel-ucode` ou `amd-ucode` en fonction du processeur afin d'éviter de potentiel bug à ce niveau** 
+
+En cas d'erreur à cause d'un réseau trop lent, relancer la commande seul les paquets non installé s'installeront 
 
 ### Initialisation des partitions au démarrage
 ___
@@ -241,8 +352,7 @@ nano /etc/locale.gen
 locale-gen 
 ```
 ```shell
-nano /etc/vconsole.conf
-KEYMAP=fr
+echo "KEYMAP=fr" > /etc/vconsole.conf
 ```
 #### Configuration de la langue système
 ___
@@ -268,12 +378,46 @@ useradd -m -G wheel test
 passwd test 
 # Donne accès au fichier sudoers qui va nos permettre de nous faire éxécuter toutes les commandes
 EDITOR=nano visudo
-#Décommenter la ligne    %wheel ALL=(ALL:ALL) ALL
+Décommenter la ligne    %wheel ALL=(ALL:ALL) ALL
 ``` 
 ```shell
 # Permet de définir le mot de passe de root 
 passwd
 ```
+## Configuration de mkinitpio
+Editer le hook de initramfs pour pouvoir le faire supporter le LUKS et LVM
+```shell
+nano /etc/mkinitcpio.conf
+```
+Modifier la ligne `HOOKS` pour que cela ressemble EXCATEMENNT A CECI (l'ordre est important)
+```shell
+HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)
+```
+Plus qu'a regénérer la configuration via 
+```shell
+mkinitcpio -P
+```
+## Préconfiguration de GRUB (UEFI chiffré)
+Pour faire en sorte que grub boot correctement sur la partition chiffré nous allons devoir extraire l'UUID qui nous allons rentrer dans la configuration de GRUB et pour ceci nous allons utiliser la commande 
+```shell
+blkid /dev/sda2
+UUUID-SDA2
+```
+Modifier la configuration de GRUB
+```shell
+nano /etc/default/grub
+```
+Modifier la ligne `GRUB_CMDLINE_LINUX` :
+```shell
+GRUB_CMDLINE_LINUX="rd.luks.name=UUID-SDA2=cryptlvm rd.luks.options=UUID-SDA2=tpm2-device=auto root=/dev/vg0/root"
+```
+Toujours dans le fichier grub décommentée la ligne 
+```shell
+GRUB_ENABLE_CRYPTODISK=y
+```
+Si jamais vous voulez juste un disque chiffré c'était la dernière étape Bravo !
+Pour l'implémentation de la TPM2 on continue !
+
 ## Initialisation du bootloader (GRUB)
 Dans le cas d'une installation BIOS :
 ```shell
@@ -288,13 +432,46 @@ grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 #Commande qui va permettre générer la configuration de GRUB et qui va rendre le système bootable
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
-## Pour terminer !
+## Redémarrage 
 ```shell
 # Afin d'avoir du réseau quand on va redémarrer !
 systemctl enable NetworkManager
 # Qui va nous faire sortir de Chroot 
 exit
 reboot
+```
+## Post-Installation 
+Lors du redémarrage, saisir le mot de passe défini lors de la section [cette partie](#configuration-supplémentaire-pour-le-volume-chiffré) et les credentials de votre utilisateurs nous allons bien vérifier que la TPM est toujours détecter
+```shell
+sudo systemd-cryptenroll --tpm2-device=list
+```
+Nous allons générer la clé de récuparation **GARDER LA EN LIEUX SUR ELLE VOUS SERA UTILE EN CAS DE PROBLEME !!!**
+```shell
+sudo systemd-cryptenroll --recovery-key /dev/sda2
+```
+Mettre en place la TPM2 avec un code PIN **(QUI PRENDS CHIFFRE ET LETTRES !!)**
+Sur votre PC éxécuter la première commande car cela rajoute l'état du secure boot
+La seconde ne passera pas par le secure boot, on perd donc l'intérêt mais pratique sur VM
+>VMware caprisieux avec le secure boot 
+```shell
+sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=0+7 --tpm2-with-pin=yes /dev/sda2
+
+sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=0 --tpm2-with-pin=yes /dev/sda2
+```
+Va permettre de vérifier que le TPM est bien mis en place
+```shell
+cryptsetup luksDump /dev/sda2
+```
+Plus qu'a reboot afin de voir si cela est corrctement appliqué !  
+
+NE PAS OUBLIER DE REACTIVER LE SECURE BOOT DANS LE BIOS 
+
+Au prochain démarrage, le TPM demandera le PIN définit plutôt.
+## En cas de problème via une mise à jour firmware ou bios 
+```shell
+Utilisé la clé récupération générer plus haut
+systemd-cryptenroll --wipe-slot=tpm2 /dev/sda2
+systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=0+7 --tpm2-with-pin=yes /dev/sda2
 ```
 Et voila une fois le reboot terminer enlever votre clé ou votre ISO et voici une configuration Arch minimal toute prête !  
 Si vous trouvez cela trop minimaliste n'hésiter à voir le tuto d'installation d'un environnment graphique type GNOME ou KDE Plasma.
