@@ -37,6 +37,7 @@ sudo systemctl enable --now NetworkManager
 localectl --no-convert set-x11-keymap fr
 sudo systemctl enable --now sddm
 ``` 
+Beurk sddm à démarrer c'est moche hein ?
 
 Pour avoir clavier fr partout aller les modifier dans Paramètres -> Clavier -> Choisir Français (a vrai dire je sais plus si on dois aussi le faire sur kde mais dans le doute)
 
