@@ -206,7 +206,7 @@ Afin d'initialiser le système d'exploitation une bonne fois pour toute lancer l
 ```shell
 pacstrap -K /mnt base linux linux-firmware networkmanager git curl man fastfetch grub efibootmgr nano sudo
 ``` 
-**Optionnel mais peut être bien `intel-ucode` ou `amd-ucode` en fonction du processeur afin de corriger du potentiel bug à ce niveau**  
+**Optionnel mais peut être bien `intel-ucode` ou `amd-ucode` en fonction du processeur afin d'éviter de potentiel bug à ce niveau**  
 
 En cas d'erreur à cause d'un réseau trop lent, relancer la commande seul les paquet non installé s'installeront 
 
