@@ -8,7 +8,7 @@ Ce tuto à été écrit le 08/03/2026 peut être que des choses de celui si sero
 
 # Liens vers les docs
 ### [Guide complet de l'installation](Guide_Install_Arch_Linux_Minimal.md)
-### [Guide vers l'installation des environnement graphique](Env_graphique_via_minimal.md)
+### [Guide vers l'installation des environnements graphiques](Env_graphique_via_minimal.md)
 ### [Toutes les commandes à faire quand on à déja fait une install](all_cmd.md)
 
 # Partie à rajouter 
