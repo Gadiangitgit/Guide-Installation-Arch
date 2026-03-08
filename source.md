@@ -26,4 +26,6 @@ Vrai de Vrai tout ce qui est ici sont des questions légitimes à ce poser lorsq
 
 [L'importance du Fstab](https://wiki.archlinux.org/title/Fstab_(Fran%C3%A7ais))
 
+[KDE Plasma, ces différentes versions à l'installation](https://wiki.archlinux.org/title/KDE)
+
 
