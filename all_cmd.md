@@ -4,12 +4,12 @@ ip a
 ping archlinux.org 
 cfdisk
 lsblk
-mkfs.ext4 /dev/sda?
-mkswap /dev/sda?
-mkfs.fat -F 32 /dev/sda?
-mount /dev/sda? /mnt
-mount --mkdir /dev/sda? /mnt/boot
-swapon /dev/sda?
+mkfs.ext4 /dev/sda3
+mkswap /dev/sda2
+mkfs.fat -F 32 /dev/sda1
+mount /dev/sda3 /mnt
+mount --mkdir /dev/sda1 /mnt/boot
+swapon /dev/sda2
 pacman-key --init && pacman-key --populate
 nano /etc/pacman.conf
 pacstrap -K /mnt base linux linux-firmware networkmanager git curl man fastfetch grub efibootmgr nano sudo

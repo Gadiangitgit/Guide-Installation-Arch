@@ -8,7 +8,7 @@ ___
 ```shell
 loadkeys fr
 ```
-Pour agrandir la police en fonction de la taille de l'écran
+**Pour agrandir la police en fonction de la taille de l'écran**
 ```shell
 setfont -d
 ```
@@ -62,25 +62,25 @@ La partition /home est assez importante, il s'agit de celle qui va contenir tout
 
 ### Lister les partitions créer afin de les formater correctement
 ___
-Afin de continuer il faut correctement identifier les partitions de notre disque dur repérer en fonction de la taille 
+Afin de continuer,  il faut correctement identifier les partitions de notre disque dur repérer en fonction de la taille 
 ```shell
 lsblk
 ```  
-Dans notre cas UEFI : 
+**Dans notre cas UEFI :**   
 sda1 est la partition EFI  
 sda2 est la partition de swap   
 sda3 est la partition de EXT4 (Linux Filesystem) 
 
-Dans notre cas UEFI Chiffré :
-sda1 est la partition EFI
-sda2 est la partition EXT4 (Linux Filesystem)
-(La swap sera créer plus tard et chiffré)
+**Dans notre cas UEFI Chiffré :**  
+sda1 est la partition EFI  
+sda2 est la partition EXT4 (Linux Filesystem)  
+(La swap sera créer plus tard et chiffré)  
 
 
 
 ### Mettre en place le partitionnement du disques dur en UEFI
-Il est très important de préciser le disque par défaut pour être sur de ne pas ce tromper de périphérique d'installation  
-- /sda = disque HDD & SSD
+Il est très important de préciser le disque par défaut pour être sur de ne pas ce tromper de périphérique d'installation, les disque en sd? sont fait par lettre de l'alphabet et les NVME et Carte SD en numéro
+- /sd? = disque HDD & SSD 
 - /nvme0n? = disque NVME
 - /mmcblk? = carte SD (qui fait ça sérieux ?)
 ___
@@ -91,14 +91,16 @@ cfdisk /dev/sda
 
 Sélectionner GPT (C'est marrant hein ?)
 
- En cas de disque non chiffré sans /home séparer 
+**En cas de disque non chiffré sans /home séparer** 
+
 | Type de Partition | Taille de Partition | Type de Formatage |
 | :--------------------- | :--------------- | :---------------|
 | EFI System| 512 MB ou 1G (en cas de dual-boot ou multi kernel) | FAT32
 | Linux swap | En fonction de la RAM (Si 4G de RAM mettre 4G de SWAP ect..) | Linux SWAP
 |Linux Filesystem | Tout le reste du disque| EXT4 
 
-En cas de disque non chiffré et /home séparer 
+**En cas de disque non chiffré et /home séparer** 
+
 | Type de Partition | Taille de Partition | Type de Formatage |
 | :--------------------- | :--------------- | :---------------|
 | EFI System| 512 MB ou 1G (en cas de dual-boot ou multi kernel) | FAT32
@@ -106,14 +108,15 @@ En cas de disque non chiffré et /home séparer
 |Linux Filesystem | +-30G | EXT4 
 |Linux Filesystem | Tout le reste du disque| EXT4 
 
- En cas de disque chiffré et /home séparer ou non 
+**En cas de disque chiffré et /home séparer ou non** 
+
 | Type de Partition | Taille de Partition | Type de Formatage |
 | :--------------------- | :--------------- | :---------------|
 | EFI System| 512 MB ou 1G (en cas de dual-boot ou multi kernel) | FAT32
 |Linux Filesystem | Tout le reste du disque| EXT4 
 
 
-**SPAMMER PAS ENTREE PAR IMPATIENCE CELA VOUS FERRAIS QUITTER LE MENU DE CFDISK ET TOUT RECOMMENCER**  
+**SPAMMER PAS ENTRÉE PAR IMPATIENCE CELA VOUS FERRAIS QUITTER LE MENU DE CFDISK ET TOUT RECOMMENCER**  
 - Sélectionner le disque vide avec Entrée
 - Saisir la taille de la partition souhaité ( Format : NombreUnité ex: 512MB) puis Entrée
 - Naviguer avec les flèches pour changer le type de partition via Type
@@ -125,30 +128,31 @@ En cas de disque non chiffré et /home séparer
 
 ### Configuration supplémentaire pour le volume Chiffré
 ___
-La manière de procéder est totalement différente
+La manière de procéder est totalement différente  
+**Pour formater notre partition/dev/sda2 avec LUKS2** 
 ```shell
-#Pour formater notre partition/dev/sda2  avec LUKS2 
 cryptsetup luksFormat --type luks2 --pbkdf pbkdf2 /dev/sda2
 ```
---pbkdf pbkdf2 obligatoire pour la compatibilté avec GRUB
-Ecrire `YES`
-Rentrer le mot de passe qui va être demander lors de chaque connexion
+**--pbkdf pbkdf2 obligatoire pour la compatibilté avec GRUB**  
+**Ecrire `YES`**  
+**Rentrer le mot de passe qui va être demander lors de chaque connexion** 
 
+**Rentrer dans le volume chiffré**
 ```shell
-# Rentrer dans le volume chiffré
 cryptsetup luksOpen /dev/sda2 cryptlvm
 ```
+**Créer le volume LVM**
 ```shell
-# Créer le volume LVM
 pvcreate /dev/mapper/cryptlvm
 ```
+**Créer le groupe de volume**
 ```shell
-# Créer le groupe de volume
 vgcreate vg0 /dev/mapper/cryptlvm
 ```
-Une fois terminée nous allons créer nos chiffré en focntion du besoin (ne faites pas la commande pour le swap ou le home si vous n'en voulez pas)
+Une fois terminée nous allons créer nos chiffré en fonction du besoin (ne faites pas la commande pour le swap ou le home si vous n'en voulez pas)
+
+**?G à adapter selon la RAM, la deuxième commande va prendre tout ce qui reste, la dernière permet de vérifier que les paramètres ont bien été appliquée**
 ```shell
-# ?G à adapter selon la RAM, la deuxième commande va prendre toutce qui reste, la dernière permet de vérifier que les paramètres ont bien été appliquée 
 lvcreate -L ?G vg0 -n swap  
 lvcreate -L 30G vg0 -n root    
 lvcreate -l 100%FREE vg0 -n home 
@@ -157,39 +161,38 @@ lvs
 
 ### Formater les partitions sous le bon format (UEFI)
 ___
-```shell
-#Pour formater notre partition/dev/sda3 en EXT4 
+**Pour formater notre partition/dev/sda3 en EXT4**
+```shell 
 mkfs.ext4 /dev/sda3
 ```
+**Pour formater notre /dev/sda2 en swap**
 ```shell
-# Pour formater notre /dev/sda2 en swap
 mkswap /dev/sda2
 ```
+**Pour formater le /dev/sda1 en FAT32**
 ```shell
-# Pour formater le /dev/sda1 en FAT32
 mkfs.fat -F 32 /dev/sda1
 ```
-Si /home séparer 
+**Si /home séparer** 
 ```shell
 mkfs.ext4 /dev/sda4
 ```
 ### Formater les partitions sous le bon format (UEFI Chiffré)
 ___
+**Pour formater notre partition root en EXT4** 
 ```shell
-#Pour formater notre partition root en EXT4 
 mkfs.ext4 /dev/vg0/root
 ```
+**Pour formater la partition swap**
 ```shell
-# Pour formater la partition swap en swap
 mkswap /dev/vg0/swap
 ```
+**Pour formater le /dev/sda1 en FAT32**
 ```shell
-# Pour formater le /dev/sda1 en FAT32
 mkfs.fat -F 32 /dev/sda1
 ```
-En cas de /home séparée 
+**En cas de /home séparée** 
 ```shell
-#Pour formater notre partition home en EXT4 
 mkfs.ext4 /dev/vg0/home
 ```
 
@@ -197,50 +200,48 @@ mkfs.ext4 /dev/vg0/home
 ___
 Pour monter les lecteur nous allons utliser la commande `mount`
 
+**Pour monter la partition EXT4**
 ```shell
-# Pour monter la partition EXT4
 mount /dev/sda3 /mnt
 ```
+**Pour monter la partition EFI**
 ```shell 
-# Pour monter la partition EFI
 mount --mkdir /dev/sda1 /mnt/boot
 ```
+**Pour activer le swap**
 ```shell
-# Pour activer le swap
 swapon /dev/sda2
 ```
+**Pour monter la partition /home**
 ```shell 
-# Pour monter la partition /home
 mount --mkdir /dev/sda4 /mnt/home
 ```
-Notes : Dans certains tuto pour la partition EFI, il créer le dossier /mnt/boot appart j'ai décidé de le mettre dans une seule et unique commande par facilité
 
 ### Monter les lecteurs afin de commencer l'installation (UEFI Chiffré) 
 ___
 Pour monter les lecteur nous allons utliser la commande `mount`
 
+**Pour monter la partition EXT4**
 ```shell
-# Pour monter la partition EXT4
 mount /dev/vg0/root /mnt
 ```
+**Pour monter la partition EFI**
 ```shell 
-# Pour monter la partition EFI
 mount --mkdir /dev/sda1 /mnt/boot
 ```
+**Pour activer le swap**
 ```shell
-# Pour activer le swap
 swapon /dev/vg0/swap
 ```
+**Pour monter la partition EFI**
 ```shell 
-# Pour monter la partition EFI
 mount --mkdir /dev/vg0/home /mnt/home
-
+```
+**Pour vérifier que tout est en place les 2 partitions doivent apparaitre**
 ```shell
-# Pour vérifier que tout est en place les 2 partitions doivent apparaitre
 lvs 
 pvs
 ```
-Notes : Dans certains tuto pour la partition EFI, il créer le dossier /mnt/boot appart j'ai décidé de le mettre dans une seule et unique commande par facilité 
 
 ### Vérification que l'intégrité des paquets lors de l'installations 
 ___
@@ -256,7 +257,7 @@ nano /etc/pacman.conf
 ``` 
 - Décommenter Color (un peu de couleurs ça mets bien quand même)
 - Décommenter les autres reposititory en fonction des besoins
-core & extra sont présent par défaut, je conseille de décommenter multilib aussi car gère les application 32 bits tel que `steam` et `wine` et stable donc aucune raison de ne pas le prendre 
+core & extra sont présent par défaut, je conseille de décommenter multilib aussi car gère les application 32 bits tel que `steam` et `wine` donc aucune raison de ne pas le prendre 
 - Augmenter le nombre de ParallelDownloads en fonction de votre débit
 
 Puis sauvegarder et quitter
@@ -267,7 +268,7 @@ Afin d'initialiser le système d'exploitation une bonne fois pour toute lancer l
 ```shell
 pacstrap -K /mnt base linux linux-firmware base-devel networkmanager git curl man fastfetch grub efibootmgr nano sudo
 ``` 
-**Si on chiffre le système les paquets `lvm2 cryptsetup` sont à rajouter**
+**Si on chiffre le système les paquets `lvm2 cryptsetup` sont à rajouter**  
 **Si on chiffre le système avec le TPM les paquets `tpm2-tools tpm2-tss` sont à rajouter en plus de `lvm2 cryptsetup`**
 
 **Optionnel mais peut être bien `intel-ucode` ou `amd-ucode` en fonction du processeur afin d'éviter de potentiel bug à ce niveau** 
@@ -276,46 +277,49 @@ En cas d'erreur à cause d'un réseau trop lent, relancer la commande seul les p
 
 ### Initialisation des partitions au démarrage
 ___
-Cette commande permettra au système d'exploitation quelle lecteur monté au démmarage.
+Cette commande permettra de monté les bon lecteurs au démmarage.
 ```shell
 genfstab -U /mnt >> /mnt/etc/fstab
 ```
 ### Configuration Post-Installation 
 ___
-Afin de terminé l'installation, nous allons directment rentrée dans le système fraichement installé via 
-```shell
+Afin de terminé l'installation, nous allons directment rentrée dans le système fraichement installé 
+
+**La différence de terminal indique qu'on est rentrée à l'intréieur du système fraichement installé**
+```txt
 root@archiso ~ # arch-chroot /mnt
-# La différence de terminal indique qu'on est rentrée à l'intréieur du système fraichement installé
 [root@archiso /] #
 ```
-#### Configuration de la timezone
+### Configuration de la timezone
 ___
+**Lien symbolique vers notre timezone afin qu'elle sois pris par défaut**  
+**Permet de synchroniser la clock**
 ```shell
-# Lien symbolique vers notre timezone afin qu'elle sois pris par défaut
 ln -sf /usr/share/zoneinfo/Europe/Paris /etc/localtimedate
-# Permet de synchroniser la clock 
 hwclock --systohc
 ``` 
-#### Configuration du clavier
+### Configuration du clavier
 ___
+**Décommenter la ligne associer à la langue dans notre cas "fr_FR.UTF-8", enregistrer puis quitter**  
+**`locale-gen` Permet d'appliquer la modification**
+
 ```shell 
 nano /etc/locale.gen 
-# Décommenter la ligne associer à la langue dans notre cas "fr_FR.UTF-8", enregistrer puis quitter 
-# Permet d'appliquer la modification
 locale-gen 
 ```
+**Permet de changer la langue du login screen**
 ```shell
 echo "KEYMAP=fr" > /etc/vconsole.conf
 ```
-#### Configuration de la langue système
+### Configuration de la langue système
 ___
+**Ici, les messages d'erreur seront en Anglais (plus facile pour dépanner)
 ```shell
 nano /etc/locale.conf
 LANG=fr_FR.UTF-8
-# Pour laisser les messages d'erreur en Anglais (plus facile pour dépanner)
 LC_MESSAGES=en_US.UTF-8
 ```
-#### Configuration du nom d'hôte 
+### Configuration du nom d'hôte 
 ___
 ```shell
 echo "hostname souhaité" > /etc/hostname
@@ -323,30 +327,35 @@ echo "hostname souhaité" > /etc/hostname
 ### Création d'un utilisateur et définition du mot de passe user & root 
 ___
 Créer un utilisateur avec les droit sudo 
-(Bon vous savez qu'en terme de sécurité c'est une faille donc à vos risques et péril)
-```shell
-# Création d'un utilisateur test affecter au groupe wheel 
+(Bon vous savez qu'en terme de sécurité c'est une faille donc à vos risques et péril)  
+
+**Création d'un utilisateur test affecter au groupe wheel**
+```shell 
 useradd -m -G wheel test
-# Définition du mot de passe de test
-passwd test 
-# Donne accès au fichier sudoers qui va nos permettre de nous faire éxécuter toutes les commandes
+```
+Définition du mot de passe de test
+```shell
+passwd test
+``` 
+**Donne accès au fichier sudoers qui va nos permettre de nous faire éxécuter toutes les commandes** 
+```shell
 EDITOR=nano visudo
 Décommenter la ligne    %wheel ALL=(ALL:ALL) ALL
 ``` 
+Permet de définir le mot de passe de root
 ```shell
-# Permet de définir le mot de passe de root 
 passwd
 ```
 ## Configuration de mkinitpio
-Editer le hook de initramfs pour pouvoir le faire supporter le LUKS et LVM
+**Editer le hook de initramfs pour pouvoir le faire supporter le LUKS et LVM**
 ```shell
 nano /etc/mkinitcpio.conf
 ```
-Modifier la ligne `HOOKS` pour que cela ressemble EXCATEMENNT A CECI (l'ordre est important)
+**Modifier la ligne `HOOKS` pour que cela ressemble EXCATEMENNT A CECI (l'ordre est important)**
 ```shell
 HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)
 ```
-Plus qu'a regénérer la configuration via 
+**Plus qu'a regénérer la configuration via**
 ```shell
 mkinitcpio -P
 ```
@@ -356,15 +365,15 @@ Pour faire en sorte que grub boot correctement sur la partition chiffré nous al
 blkid /dev/sda2
 UUUID-SDA2
 ```
-Modifier la configuration de GRUB
+**Modifier la configuration de GRUB**
 ```shell
 nano /etc/default/grub
 ```
-Modifier la ligne `GRUB_CMDLINE_LINUX` :
+**Modifier la ligne `GRUB_CMDLINE_LINUX` :**
 ```shell
 GRUB_CMDLINE_LINUX="rd.luks.name=UUID-SDA2=cryptlvm rd.luks.options=UUID-SDA2=tpm2-device=auto root=/dev/vg0/root"
 ```
-Toujours dans le fichier grub décommentée la ligne 
+**Toujours dans le fichier grub décommentée la ligne** 
 ```shell
 GRUB_ENABLE_CRYPTODISK=y
 ```
@@ -373,20 +382,19 @@ Pour l'implémentation de la TPM2 on continue !
 
 ## Initialisation du bootloader (GRUB)
 
-Dans le cas d'une installation UEFI :
+Dans le cas d'une installation UEFI :  
+**Si vous n'êtes pas sur du efi directory faire un `lsblk` et prendre le chemin qui correspond à la partition efi**
 ```shell
 grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB 
-# Si vous n'êtes pas sur du efi directory faire un lsblk et prendre le chemin qui correspond à la partition efi
 ```
+**Commande qui va permettre générer la configuration de GRUB et qui va rendre le système bootable**
 ```shell
-#Commande qui va permettre générer la configuration de GRUB et qui va rendre le système bootable
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
-## Redémarrage 
+## Redémarrage
+**Il ne nous reste plus qu'a activer NetworkManager, sortir de chroot et redémarrer**
 ```shell
-# Afin d'avoir du réseau quand on va redémarrer !
 systemctl enable NetworkManager
-# Qui va nous faire sortir de Chroot 
 exit
 reboot
 ```
